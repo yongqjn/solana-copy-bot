@@ -1,4 +1,5 @@
 import { Connection, PublicKey } from "@solana/web3.js";
+import axios from "axios";
 
 // Metaplex Token Metadata Program ID
 export const METAPLEX_METADATA_PROGRAM = new PublicKey(
@@ -100,4 +101,36 @@ async function fetchMintDecimals(
     return accountInfo.data.readUInt8(44);
   }
   return 0;
+}
+
+/**
+ * Fetch token price using Dexscreener API.
+ * @param tokenAddress - The token's address.
+ * @returns The USD price of the token, or null if not found.
+ */
+export async function fetchTokenPriceFromDexscreener(
+  tokenAddress: string
+): Promise<number | null> {
+  try {
+    // API endpoint
+    const url = `https://api.dexscreener.com/latest/dex/tokens/${tokenAddress}`;
+
+    // Make the GET request
+    const response = await axios.get(url);
+
+    // Parse the response
+    const data = response.data;
+
+    if (data?.pairs?.length > 0) {
+      // Extract the price from the first pair
+      const priceUsd = parseFloat(data.pairs[0]?.priceUsd);
+      return priceUsd || null;
+    } else {
+      console.error("No pairs found for the token address:", tokenAddress);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching token price from Dexscreener:", error);
+    return null;
+  }
 }

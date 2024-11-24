@@ -1,9 +1,16 @@
 import { Connection, ParsedTransactionWithMeta } from "@solana/web3.js";
-import { TokenMetadata, fetchTokenNameAndDecimals } from "./token-utils";
+import {
+  TokenMetadata,
+  fetchTokenNameAndDecimals,
+  fetchTokenPriceFromDexscreener,
+} from "./token-utils";
 
 /**
  * Process a transaction to determine balance changes and fetch token metadata dynamically.
  * @param tx - The parsed transaction.
+ * @param connection - Solana connection.
+ * @param targetWallet - The wallet being tracked.
+ * @param tokenMetadataCache - Cache for token metadata.
  */
 export async function processTransactionForTrades(
   tx: ParsedTransactionWithMeta,
@@ -25,8 +32,15 @@ export async function processTransactionForTrades(
 
   if (solBalanceChange !== 0) {
     const action = solBalanceChange > 0 ? "Bought" : "Sold";
+    const solPrice = await fetchTokenPriceFromDexscreener(
+      "So11111111111111111111111111111111111111112"
+    ); // Wrapped SOL
+    const solValue = solPrice ? Math.abs(solBalanceChange) * solPrice : 0;
+
     console.log(
-      `Token: SOL, ${action}: ${Math.abs(solBalanceChange).toFixed(9)} SOL`
+      `Token: SOL, ${action}: ${Math.abs(solBalanceChange).toFixed(
+        9
+      )} SOL (Value: $${solValue.toFixed(2)})`
     );
   }
 
@@ -63,11 +77,14 @@ export async function processTransactionForTrades(
       mint,
       tokenMetadataCache
     );
+    const price = await fetchTokenPriceFromDexscreener(mint);
+    const value = price ? Math.abs(change) * price : 0;
     const action = change > 0 ? "Bought" : "Sold";
+
     console.log(
       `Token: ${name} (${mint}), ${action}: ${Math.abs(change).toFixed(
         decimals
-      )} ${symbol}`
+      )} ${symbol} (Value: $${value.toFixed(2)})`
     );
   }
 
